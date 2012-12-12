@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"crypto/tls"
 	"regexp"
+	"strings"
 	irc "github.com/fluffle/goirc/client"
 	"github.com/NickPresta/GoURLShortener"
 ) 
@@ -30,11 +31,27 @@ func initServerConnection(server Server, quit chan bool) {
 	c.AddHandler("privmsg", func(conn *irc.Conn, line *irc.Line) {
 		matches := urlRegex.FindAllString(line.Args[1] ,-1)
 		for _,match := range matches {
-			uri, err := goisgd.Shorten(match)
-			if err != nil {
-				continue
+			if (len(match) >= server.MinLength) {
+				blacklist := false 
+
+				for _,item := range server.Blacklist {
+
+					if strings.Contains(match, item) {
+						blacklist = true
+						continue
+					}
+				}
+
+				if blacklist {
+					continue
+				}	
+				
+				uri, err := goisgd.Shorten(match)
+				if err != nil {
+					continue
+				}
+				conn.Privmsg(line.Args[0], uri)
 			}
-			conn.Privmsg(line.Args[0], uri)
 		}
 	})
 
@@ -50,7 +67,7 @@ func main() {
 	flag.Parse()
 
 	var err error
-	urlRegex,err = regexp.Compile(`(http|https|ftp|ftps)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(\/\S*)?`)
+	urlRegex,err = regexp.Compile(`(http|https|ftp|ftps)\://[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,4}(/\S*)?`)
 	if err != nil {
 		fmt.Printf("Regex failed to compile: %v", err)
 		os.Exit(1)

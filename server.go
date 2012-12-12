@@ -8,6 +8,8 @@ type Server struct {
 	Password string
 	SSL bool
 	Channels []string
+	Blacklist []string
+	MinLength int
 
 }
 
